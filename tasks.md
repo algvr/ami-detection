@@ -1,4 +1,9 @@
 # Tasks for "Analysis of Electrocardiograms via Artificial Neural Networks For a Reliable Assessment of a Possible Myocardial Infarction" 
+### Tools
+
+- PyCharm for working with Python: https://www.jetbrains.com/pycharm/download/#section=windows
+  - use community edition; students can also get Pro edition for free
+
 ### Organization
 
 - make task list & keep updated
@@ -25,13 +30,15 @@
   - start with PTB-XL to set up pipeline
   - can expand later to improve
     - https://www.frontiersin.org/articles/10.3389/fcvm.2021.654515/full fuses multiple datasets
-- reading in data from CSV
+- reading in data from PTB-XL
 - collect ECG templates to superimpose graphs on
   - can generate ourselves using imaging libraries, or use a free template (e.g. from https://www.printablepaper.net/preview/ECG_Paper)
 - superimpose ECG lines on ECG template
+  - initial calibration mark: check "Calibration" under https://thoracickey.com/ecg-interpretation/
   - take care of paper speed
   - take care to map leads correctly to parts of ECG paper
     - _important_: we should do research whether ECGs always have the layout, or there can be variations
+      - standard layout: https://en.wikipedia.org/wiki/Electrocardiography#Lead_locations_on_an_ECG_report
     - need to ask user the layout of the ECG/number of leads in the web tool to be sure
   - there are different types of ECG (different number of leads)
     - standard and maximum is 12-lead (also lead type of PTB-XL); you can extract individual leads from that
@@ -46,7 +53,9 @@
       - different kinds of tables (color, illumination)
       - different kinds of walls
       - uniform color (something like https://unsplash.com/photos/gM8igOIP5MA; then use image editor to get same background in blue, red, white, ...)
-      - look for public domain images to avoid licensing issues
+      - can take table/wall background images ourselves
+        - then use image editor to get same background in blue, red, white, ...
+      - alternatively, look for public domain images to avoid licensing issues
         - https://www.publicdomainpictures.net/en/
         - https://unsplash.com/
   - images can have very different resolution; try to match that of common cameras
