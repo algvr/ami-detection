@@ -1,4 +1,4 @@
-# Tasks for "Analysis of Electrocardiograms via Artificial Neural Networks For a Reliable Assessment of a Possible Myocardial Infarction" 
+# Analysis of Electrocardiograms via Artificial Neural Networks For a Reliable Assessment of a Possible Myocardial Infarction
 ### Tools
 
 - PyCharm for working with Python: https://www.jetbrains.com/pycharm/download/#section=windows
@@ -30,6 +30,7 @@
 ### Building new dataset
 
 - note: working with dataset will require approx. 3-4 GBs of RAM
+  - change code to only load part of DS
 - datasets
   - start with PTB-XL to set up pipeline
   - can expand later to improve
@@ -39,6 +40,7 @@
 - collect ECG templates to superimpose graphs on
   - can generate ourselves using imaging libraries, or use a free template (e.g. from https://www.printablepaper.net/preview/ECG_Paper)
 - superimpose ECG lines on ECG template
+  - start with single template, then expand
   - initial calibration mark: check "Calibration" under https://thoracickey.com/ecg-interpretation/
   - take care of paper speed
   - take care to map leads correctly to parts of ECG paper
@@ -100,6 +102,7 @@
     - GRU
   - again: train different networks for 1-lead ECGs, etc.?
   - can compare performance to image-based neural networks
+  - maybe try different classes/networks, report how well which classes work
 
 ### Presentation
 
