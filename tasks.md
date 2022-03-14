@@ -3,6 +3,9 @@
 
 - PyCharm for working with Python: https://www.jetbrains.com/pycharm/download/#section=windows
   - use community edition; students can also get Pro edition for free
+- Git: https://git-scm.com/download/win
+  - Git cheat sheet: https://wac-cdn.atlassian.com/dam/jcr:e7e22f25-bba2-4ef1-a197-53f46b6df4a5/SWTM-2088_Atlassian-Git-Cheatsheet.pdf?cdnVersion=255
+- Git LFS for datasets: https://git-lfs.github.com/
 
 ### Organization
 
@@ -13,24 +16,26 @@
 - agree on programming language
   - Python, unless anyone prefers another one
 - tools/libraries (depends on programming language; assume Python)
-  - pillow (Python Imaging Library)
-  - PyTorch
+  - pillow (Python Imaging Library) for synthesizing/augmenting ECG images: https://pillow.readthedocs.io/en/stable/
+  - PyTorch for working with neural networks
   - torchvision / torchvision.transforms for data augmentations
+    - try doing data augmentation using pillow first!
     - check out https://pytorch.org/vision/stable/auto_examples/plot_transforms.html#sphx-glr-auto-examples-plot-transforms-py for some examples
     - more comprehensive documentation: https://pytorch.org/vision/stable/transforms.html
     - may need to convert NumPy arrays into PyTorch Tensors
-
 - split tasks
   - keep tasks fine-grained for better workload balancing; not too much to avoid overhead
 - if you have coding questions, don't hesitate to ask :)
 
 ### Building new dataset
 
+- note: working with dataset will require approx. 3-4 GBs of RAM
 - datasets
   - start with PTB-XL to set up pipeline
   - can expand later to improve
     - https://www.frontiersin.org/articles/10.3389/fcvm.2021.654515/full fuses multiple datasets
 - reading in data from PTB-XL
+  - check out "example_physionet.py"
 - collect ECG templates to superimpose graphs on
   - can generate ourselves using imaging libraries, or use a free template (e.g. from https://www.printablepaper.net/preview/ECG_Paper)
 - superimpose ECG lines on ECG template
