@@ -128,8 +128,9 @@
 - add some info about MIs on web tool page
 - add disclaimers
 
-## Questions and answers from the consulation hour for the project
-- From covid project: beware of parameters? most probably, beware of model overfitting with the neural network and how we label the dataset. Justify our understanding of the model's behavious and interpretation of results.
-- For our project: Justify conceptual system by meta-analysis studies. ECGs legal implications, how to ensure privacy concerns in the webtool apps. Check ETH spinoffs for the ones checking medical data. Check legal ecosystem via the spinoffs but not important at the moment. Ask Vaiva for asking the legal board of ETH. Recheck error types (false possitives and negativeS) compare with false positives/negatives in medicine. Maybe som eimage features provoke errors of a certain type. Model error propagation. print layer to check attention.
+## Questions and answers from the consultation hour for the project
+
+- From covid project: beware of parameters? most probably, beware of model overfitting with the neural network and how we label the dataset. Justify our understanding of the model's behaviours and interpretation of results.
+- For our project: Justify conceptual system by meta-analysis studies. ECGs legal implications, how to ensure privacy concerns in the webtool apps. For the disclaimer: check ETH spinoffs for the ones checking medical data. Check legal ecosystem via the spinoffs but not important at the moment. Ask Vaiva for asking the legal board of ETH. Recheck error types (false positives and negatives), compare with false positives/negatives in medicine. Maybe some image features provoke errors of a certain type. Model error propagation and (importantly) characterize different error types across models. Check how other health tools treat the asymmetry between type I error and type II error. Idea: visualize attention layer, then cross-check with expert (e.g. cardiologist) whether highlighted features are indeed indicative of an MI / a normal ECG. Important: Create ROC curve. Make different types of errors intuitively understandable for users on the website. Compare image (CNN)-based and time series-based ECG classification
 - From Cyber-sec: Make easy-to-understand problem formulation. Why this problem, and what insights are obtained.
 - From Weather-Traffic: Check how bias/variance can affect the model's prediction
