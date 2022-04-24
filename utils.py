@@ -49,4 +49,3 @@ def next_perfect_square(n):
 def is_perfect_square(n):
     x = math.sqrt(n)
     return (x - math.floor(x)) == 0
-

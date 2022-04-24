@@ -84,7 +84,8 @@ def get_ecg_image(layout_array,
     :param lead_label_font_size: font size of lead labels (aVR, I, II, ...) on ECG image
     :param metadata_font_size: font size of metadata (paper speed, ...) on ECG image
     :param add_metadata: whether metadata (paper speed, ...) should be added at the bottom of the image
-    :return: generated ECG image
+    :return: tuple of (Image, dict): generated ECG image and dict of lead positions
+                                     (top-left, top-right, bottom-left, bottom-right)
     """
 
     # number of timesteps for each lead determined dynamically
@@ -130,6 +131,8 @@ def get_ecg_image(layout_array,
                       width=thick_cell_line_width if is_thick else thin_cell_line_width,
                       fill=THICK_LINE_COLOR if is_thick else THIN_LINE_COLOR)
 
+    lead_pos = {}
+
     # draw leads
 
     acc_idx = 0
@@ -146,6 +149,11 @@ def get_ecg_image(layout_array,
             cell_start_y = row_idx * vertical_small_cells_per_lead * small_cell_size
             cell_width = lead_num_small_cells * small_cell_size + calib_rect_width
             cell_height = vertical_small_cells_per_lead * small_cell_size
+
+            lead_pos[lead_label] = (cell_start_x, cell_start_y,
+                                    cell_start_x + cell_width, cell_start_y,
+                                    cell_start_x, cell_start_y + cell_height,
+                                    cell_start_x + cell_width, cell_start_y + cell_height)
 
             # # mark area belonging to this lead
             # draw.rectangle([(cell_start_x, cell_start_y), (cell_start_x + cell_width, cell_start_y + cell_height)],
@@ -183,4 +191,4 @@ def get_ecg_image(layout_array,
         draw.text((2 * small_cell_size, small_cell_size // 2 + metadata_start_y), metadata_text, fill='#000000',
                   align='left', font=metadata_font)
 
-    return img
+    return img, lead_pos
