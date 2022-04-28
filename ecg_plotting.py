@@ -84,8 +84,10 @@ def get_ecg_image(layout_array,
     :param lead_label_font_size: font size of lead labels (aVR, I, II, ...) on ECG image
     :param metadata_font_size: font size of metadata (paper speed, ...) on ECG image
     :param add_metadata: whether metadata (paper speed, ...) should be added at the bottom of the image
-    :return: tuple of (Image, dict): generated ECG image and dict of lead positions
-                                     (top-left, top-right, bottom-left, bottom-right)
+    :return: tuple of (Image, List[Image], dict): generated ECG image; mask images of segmentation GT (with classes
+                                                  "ECG curve" at index 0; "thick horizontal line" at 1;
+                                                  "thick vertical line" at 2); dict of lead positions
+                                                  (top-left, top-right, bottom-left, bottom-right)
     """
 
     # number of timesteps for each lead determined dynamically
@@ -113,6 +115,20 @@ def get_ecg_image(layout_array,
     draw = ImageDraw.Draw(img)
     draw.rectangle([(0, 0), (img_width, img_height)], fill="#ffffff")
 
+
+    # how the mask is created:
+    # we have different image objects for each GT class (except the background)
+    # all pixels with a value > 0 are set to the class number during the final conversion, then they are merged in the
+    # order 0, 2, 3, 1, with each merge overwriting the currently existing pixels
+    img_curve = Image.new("RGBA", (img_width, img_height))
+    img_thick_vert_lines = Image.new("RGBA", (img_width, img_height))
+    img_thick_hor_lines  = Image.new("RGBA", (img_width, img_height))
+    
+    draw = ImageDraw.Draw(img)
+    draw_curve = ImageDraw.Draw(img_curve)
+    draw_thick_vert_lines = ImageDraw.Draw(img_thick_vert_lines)
+    draw_thick_hor_lines = ImageDraw.Draw(img_thick_hor_lines)
+
     # draw grid
 
     for run in range(2):
@@ -120,16 +136,18 @@ def get_ecg_image(layout_array,
             is_thick = i % 5 == 0
             if run != int(is_thick):
                 continue
-            draw.line([(small_cell_size*i, 0), (small_cell_size*i, img_height)],
-                      width=thick_cell_line_width if is_thick else thin_cell_line_width,
-                      fill=THICK_LINE_COLOR if is_thick else THIN_LINE_COLOR)
+            for draw_obj in [draw, *([draw_thick_hor_lines] if is_thick else [])]:
+                draw_obj.line([(small_cell_size*i, 0), (small_cell_size*i, img_height)],
+                              width=thick_cell_line_width if is_thick else thin_cell_line_width,
+                              fill=THICK_LINE_COLOR if is_thick else THIN_LINE_COLOR)
         for i in range(num_ver_small_cells+1):
             is_thick = i % 5 == 0
             if run != int(is_thick):
                 continue
-            draw.line([(0, small_cell_size*i), (img_width, small_cell_size*i)],
-                      width=thick_cell_line_width if is_thick else thin_cell_line_width,
-                      fill=THICK_LINE_COLOR if is_thick else THIN_LINE_COLOR)
+            for draw_obj in [draw, *([draw_thick_vert_lines] if is_thick else [])]:
+                draw_obj.line([(0, small_cell_size*i), (img_width, small_cell_size*i)],
+                              width=thick_cell_line_width if is_thick else thin_cell_line_width,
+                              fill=THICK_LINE_COLOR if is_thick else THIN_LINE_COLOR)
 
     lead_pos = {}
 
@@ -169,7 +187,8 @@ def get_ecg_image(layout_array,
             y1 = cell_start_y + (vertical_small_cells_per_lead // 2 + 1) * small_cell_size  # + 1: add some offset for the lead label
             x_square = (x1, x1 + 2 * small_cell_size, x1 + 2 * small_cell_size, x1 + 7 * small_cell_size, x1 + 7 * small_cell_size, x1 + 9 * small_cell_size)
             y_square = (y1, y1, y1 - 10 * small_cell_size, y1 - 10 * small_cell_size, y1, y1)
-            draw.line(list(zip(x_square, y_square)), width=curve_line_width, fill="#000000")
+            for draw_obj in [draw, draw_curve]:
+                draw_obj.line(list(zip(x_square, y_square)), width=curve_line_width, fill="#000000")
             x_shifted = x1 + calib_rect_width
 
             # draw ECG curve
@@ -178,7 +197,10 @@ def get_ecg_image(layout_array,
             for idx in range(lead_num_timesteps - 1):
                 point_x = x_shifted + idx * inter_point_pixels
                 next_point_x = x_shifted + (idx + 1) * inter_point_pixels
-                draw.line([(point_x, y1 - curve_y_scale * lead_recording[idx]), (next_point_x, y1 - curve_y_scale * lead_recording[idx + 1])], width=curve_line_width, fill="#000000")
+                for draw_obj in [draw, draw_curve]:
+                    draw_obj.line([(point_x, y1 - curve_y_scale * lead_recording[idx]),
+                                   (next_point_x, y1 - curve_y_scale * lead_recording[idx + 1])],
+                                   width=curve_line_width, fill="#000000")
 
             acc_idx += 1
             acc_column_width += cell_width
@@ -191,4 +213,4 @@ def get_ecg_image(layout_array,
         draw.text((2 * small_cell_size, small_cell_size // 2 + metadata_start_y), metadata_text, fill='#000000',
                   align='left', font=metadata_font)
 
-    return img, lead_pos
+    return img, [img_curve, img_thick_hor_lines, img_thick_vert_lines], lead_pos

@@ -1,3 +1,5 @@
+# Designed and implemented jointly with Noureddine Gueddach, Anne Marx, Mateusz Nowak (ETH Zurich)
+
 import datetime
 import os
 import shutil

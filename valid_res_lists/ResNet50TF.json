@@ -1,0 +1,1 @@
+{"model": "ResNet50TF", "width_start": 16, "width_end": 3000, "width_step": 32, "height_start": 16, "height_end": 3000, "height_step": 32, "covered_width": 112, "covered_height": 432, "iteration_idx": 200, "valid_resolutions": [[224, 224], [448, 448], [672, 672], [896, 896]]}

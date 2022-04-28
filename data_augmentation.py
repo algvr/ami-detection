@@ -13,9 +13,14 @@ import random
 def generate_example_ecg_image():
     """
     Generate and return an ECG image from a random recording of the PTB-XL dataset
-    :return: (image, metadata, lead_pos): a PIL image, and a Pandas series with the single column of metadata associated
-    with the ECG recording the image was generated from; the metadata has the same columns as in "ptbxl_database.csv";
-    also, a dict with the positions of the leads (top-left, top-right, bottom-left, bottom-right)
+    :return: (image, mask_images, metadata, lead_pos):
+             image: a PIL image containing the result
+             mask_images: a list containing mask images of segmentation GT
+                          (with classes "ECG curve" at index 0; "thick horizontal line" at 1;
+                           "thick vertical line" at 2)
+             metadata: a Pandas series with the single column of metadata associated with the ECG recording the image
+                       was generated from; the metadata has the same columns as in "ptbxl_database.csv"
+             lead_pos: a dict with the positions of the leads (top-left, top-right, bottom-left, bottom-right)
     """
     X, Y = ptb_xl_dh.get_ecg_array(max_samples=100)
     num_recordings, _, _ = X.shape
@@ -26,13 +31,15 @@ def generate_example_ecg_image():
         np.stack([[[labels_lower.index(ecg_plotting.DEFAULT_ECG_LEAD_SEQUENCE[4 * row_idx + col_idx].lower()), 0, 180]
                    for col_idx in range(4)] for row_idx in range(3)])
     example_label_array = ptb_xl_dh.layout_array_to_label_array(example_layout_array)
-    img, lead_pos = ecg_plotting.get_ecg_image(layout_array=example_layout_array, label_array=example_label_array,
-                                               recording_array=recording)
-    return img.convert('RGBA'), Y.iloc[recording_idx], lead_pos
+    img, mask_images, lead_pos = ecg_plotting.get_ecg_image(layout_array=example_layout_array,
+                                                            label_array=example_label_array,
+                                                            recording_array=recording)
+    return img.convert('RGBA'), mask_images, Y.iloc[recording_idx], lead_pos  # mask_images already RGBA
 
 
 # based on https://stackoverflow.com/a/68345146
-def scale_rotate_translate(image, angle, sr_center=None, displacement=None, scale=None, image_lead_pos=None):
+def scale_rotate_translate(image, angle, sr_center=None, displacement=None, scale=None, image_lead_pos=None,
+                           crop_bbox=None):
     """
     Internal function used to scale, rotate and translate a given image
     :param image: the image to scale, rotate and translate
@@ -41,8 +48,11 @@ def scale_rotate_translate(image, angle, sr_center=None, displacement=None, scal
     :param displacement: (unused parameter)
     :param scale: 2-tuple of (vertical, horizontal) factors to scale the image by
     :param image_lead_pos: positions of leads on the original image (top-left, top-right, bottom-left, bottom-right)
-    :return: tuple with the scaled, rotated and translated image and lead position list
-             (top-left, top-right, bottom-left, bottom-right)
+    :param crop_bbox: predefined bounding box to use to crop the intermediate padded image to its contents
+                      (pass None to calculate new bounding box)
+    :return: tuple with (1) the scaled, rotated and translated image,
+                        (2) the lead position list (top-left, top-right, bottom-left, bottom-right)
+                        (3) the bounding box used to crop the intermediate padded image to its contents
     """
     # this is needed to avoid cropping due to the rotation of the image
     image_width, image_height = image.size
@@ -122,7 +132,10 @@ def scale_rotate_translate(image, angle, sr_center=None, displacement=None, scal
     new_image.paste(image, (paste_x, paste_y), image)
 
     rotated = new_image.transform((large_width, large_height), Image.AFFINE, (a, b, c, d, e, f), resample=Image.BICUBIC)
-    box = rotated.getbbox()  # crop image to content
+    if crop_bbox is not None:
+        box = crop_bbox
+    else:
+        box = rotated.getbbox()  # crop image to content
     cropped = rotated.crop(box)
 
     if new_lead_pos is not None:
@@ -138,7 +151,7 @@ def scale_rotate_translate(image, angle, sr_center=None, displacement=None, scal
                                  pos[6] - delta_x,
                                  pos[7] - delta_y)
 
-    return cropped, new_lead_pos
+    return cropped, new_lead_pos, box
 
 
 def get_background_image(idx):
@@ -150,34 +163,98 @@ def get_background_image(idx):
     return Image.open('datasets/backgrounds/bg_%.2i' % idx + '.jpg').convert('RGBA')
 
 
-def get_random_ecg_photo(original_image_scaling_factor_mu=1.0,
-                         original_image_scaling_factor_sd=0.0,
-                         blur_factor_mu=0.1,
-                         blur_factor_sd=0.05,
-                         ecg_paper_scale_mu=1.02,
-                         ecg_paper_scale_sd=0.02,
-                         ecg_paper_y_skew_mu=1.0,
-                         ecg_paper_y_skew_sd=0.08,
-                         rotation_angle_mu=0.0,
-                         rotation_angle_sd=5.0,
-                         ecg_paper_relative_translation_x_mu=0.0,
-                         ecg_paper_relative_translation_x_sd=0.05,
-                         ecg_paper_relative_translation_y_mu=0.0,
-                         ecg_paper_relative_translation_y_sd=0.05,
-                         shadow_color_beta_1=0.3,
-                         shadow_color_beta_2=0.3,
-                         shadow_alpha_beta_1=8.0,
-                         shadow_alpha_beta_2=25.0,
-                         shadow_relative_start_point_mu=0.0,
-                         shadow_relative_start_point_sd=0.1,
-                         shadow_relative_end_point_mu=1.0,
-                         shadow_relative_end_point_sd=0.1,
-                         shadow_blur_factor_mu=50.0,
-                         shadow_blur_factor_sigma=3.0,
-                         white_noise_p_beta_1=5.0,
-                         white_noise_p_beta_2=5.0,
-                         white_noise_sigma_mu=20.0,
-                         white_noise_sigma_sigma=5.0,
+ECG_GEN_DEFAULT_ORIGINAL_IMAGE_SCALING_FACTOR_MU = 1.0
+ECG_GEN_DEFAULT_ORIGINAL_IMAGE_SCALING_FACTOR_SD = 0.0
+ECG_GEN_DEFAULT_BLUR_FACTOR_MU = 0.1
+ECG_GEN_DEFAULT_BLUR_FACTOR_SD = 0.05
+ECG_GEN_DEFAULT_PAPER_SCALE_MU = 1.02
+ECG_GEN_DEFAULT_PAPER_SCALE_SD = 0.02
+ECG_GEN_DEFAULT_PAPER_Y_SKEW_MU = 1.0
+ECG_GEN_DEFAULT_PAPER_Y_SKEW_SD = 0.08
+ECG_GEN_DEFAULT_ROTATION_ANGLE_MU = 0.0
+ECG_GEN_DEFAULT_ROTATION_ANGLE_SD = 5.0
+ECG_GEN_DEFAULT_PAPER_RELATIVE_TRANSLATION_X_MU = 0.0
+ECG_GEN_DEFAULT_PAPER_RELATIVE_TRANSLATION_X_SD = 0.05
+ECG_GEN_DEFAULT_PAPER_RELATIVE_TRANSLATION_Y_MU = 0.0
+ECG_GEN_DEFAULT_PAPER_RELATIVE_TRANSLATION_Y_SD = 0.05
+ECG_GEN_DEFAULT_SHADOW_COLOR_BETA_1 = 0.3
+ECG_GEN_DEFAULT_SHADOW_COLOR_BETA_2 = 0.3
+ECG_GEN_DEFAULT_SHADOW_ALPHA_BETA_1 = 8.0
+ECG_GEN_DEFAULT_SHADOW_ALPHA_BETA_2 = 25.0
+ECG_GEN_DEFAULT_SHADOW_RELATIVE_START_POINT_MU = 0.0
+ECG_GEN_DEFAULT_SHADOW_RELATIVE_START_POINT_SD = 0.1
+ECG_GEN_DEFAULT_SHADOW_RELATIVE_END_POINT_MU = 1.0
+ECG_GEN_DEFAULT_SHADOW_RELATIVE_END_POINT_SD = 0.1
+ECG_GEN_DEFAULT_SHADOW_BLUR_FACTOR_MU = 50.0
+ECG_GEN_DEFAULT_SHADOW_BLUR_FACTOR_SD = 3.0
+ECG_GEN_DEFAULT_WHITE_NOISE_P_BETA_1 = 5.0
+ECG_GEN_DEFAULT_WHITE_NOISE_P_BETA_2 = 5.0
+ECG_GEN_DEFAULT_WHITE_NOISE_SD_MU = 20.0
+ECG_GEN_DEFAULT_WHITE_NOISE_SD_SD = 5.0
+
+
+def get_default_ecg_param_dict():
+    """
+    Return a dictionary of parameters and their default values for the "get_random_ecg_photo" function.
+    """
+    return {'original_image_scaling_factor_mu': ECG_GEN_DEFAULT_ORIGINAL_IMAGE_SCALING_FACTOR_MU,
+            'original_image_scaling_factor_sd': ECG_GEN_DEFAULT_ORIGINAL_IMAGE_SCALING_FACTOR_SD,
+            'blur_factor_mu': ECG_GEN_DEFAULT_BLUR_FACTOR_MU,
+            'blur_factor_sd': ECG_GEN_DEFAULT_BLUR_FACTOR_SD,
+            'ecg_paper_scale_mu': ECG_GEN_DEFAULT_PAPER_SCALE_MU,
+            'ecg_paper_scale_sd': ECG_GEN_DEFAULT_PAPER_SCALE_SD,
+            'ecg_paper_y_skew_mu': ECG_GEN_DEFAULT_PAPER_Y_SKEW_MU,
+            'ecg_paper_y_skew_sd': ECG_GEN_DEFAULT_PAPER_Y_SKEW_SD,
+            'rotation_angle_mu': ECG_GEN_DEFAULT_ROTATION_ANGLE_MU,
+            'rotation_angle_sd': ECG_GEN_DEFAULT_ROTATION_ANGLE_SD,
+            'ecg_paper_relative_translation_x_mu': ECG_GEN_DEFAULT_PAPER_RELATIVE_TRANSLATION_X_MU,
+            'ecg_paper_relative_translation_x_sd': ECG_GEN_DEFAULT_PAPER_RELATIVE_TRANSLATION_X_SD,
+            'ecg_paper_relative_translation_y_mu': ECG_GEN_DEFAULT_PAPER_RELATIVE_TRANSLATION_Y_MU,
+            'ecg_paper_relative_translation_y_sd': ECG_GEN_DEFAULT_PAPER_RELATIVE_TRANSLATION_Y_SD,
+            'shadow_color_beta_1': ECG_GEN_DEFAULT_SHADOW_COLOR_BETA_1,
+            'shadow_color_beta_2': ECG_GEN_DEFAULT_SHADOW_COLOR_BETA_2,
+            'shadow_alpha_beta_1': ECG_GEN_DEFAULT_SHADOW_ALPHA_BETA_1,
+            'shadow_alpha_beta_2': ECG_GEN_DEFAULT_SHADOW_ALPHA_BETA_2,
+            'shadow_relative_start_point_mu': ECG_GEN_DEFAULT_SHADOW_RELATIVE_START_POINT_MU,
+            'shadow_relative_start_point_sd': ECG_GEN_DEFAULT_SHADOW_RELATIVE_START_POINT_SD,
+            'shadow_relative_end_point_mu': ECG_GEN_DEFAULT_SHADOW_RELATIVE_END_POINT_MU,
+            'shadow_relative_end_point_sd': ECG_GEN_DEFAULT_SHADOW_RELATIVE_END_POINT_SD,
+            'shadow_blur_factor_mu': ECG_GEN_DEFAULT_SHADOW_BLUR_FACTOR_MU,
+            'shadow_blur_factor_sd': ECG_GEN_DEFAULT_SHADOW_BLUR_FACTOR_SD,
+            'white_noise_p_beta_1': ECG_GEN_DEFAULT_WHITE_NOISE_P_BETA_1,
+            'white_noise_p_beta_2': ECG_GEN_DEFAULT_WHITE_NOISE_P_BETA_2,
+            'white_noise_sd_mu': ECG_GEN_DEFAULT_WHITE_NOISE_SD_MU,
+            'white_noise_sd_sd': ECG_GEN_DEFAULT_WHITE_NOISE_SD_SD}
+
+
+def get_random_ecg_photo(original_image_scaling_factor_mu=ECG_GEN_DEFAULT_ORIGINAL_IMAGE_SCALING_FACTOR_MU,
+                         original_image_scaling_factor_sd=ECG_GEN_DEFAULT_ORIGINAL_IMAGE_SCALING_FACTOR_SD,
+                         blur_factor_mu=ECG_GEN_DEFAULT_BLUR_FACTOR_MU,
+                         blur_factor_sd=ECG_GEN_DEFAULT_BLUR_FACTOR_SD,
+                         ecg_paper_scale_mu=ECG_GEN_DEFAULT_PAPER_SCALE_MU,
+                         ecg_paper_scale_sd=ECG_GEN_DEFAULT_PAPER_SCALE_SD,
+                         ecg_paper_y_skew_mu=ECG_GEN_DEFAULT_PAPER_Y_SKEW_MU,
+                         ecg_paper_y_skew_sd=ECG_GEN_DEFAULT_PAPER_Y_SKEW_SD,
+                         rotation_angle_mu=ECG_GEN_DEFAULT_ROTATION_ANGLE_MU,
+                         rotation_angle_sd=ECG_GEN_DEFAULT_ROTATION_ANGLE_SD,
+                         ecg_paper_relative_translation_x_mu=ECG_GEN_DEFAULT_PAPER_RELATIVE_TRANSLATION_X_MU,
+                         ecg_paper_relative_translation_x_sd=ECG_GEN_DEFAULT_PAPER_RELATIVE_TRANSLATION_X_SD,
+                         ecg_paper_relative_translation_y_mu=ECG_GEN_DEFAULT_PAPER_RELATIVE_TRANSLATION_Y_MU,
+                         ecg_paper_relative_translation_y_sd=ECG_GEN_DEFAULT_PAPER_RELATIVE_TRANSLATION_Y_SD,
+                         shadow_color_beta_1=ECG_GEN_DEFAULT_SHADOW_COLOR_BETA_1,
+                         shadow_color_beta_2=ECG_GEN_DEFAULT_SHADOW_COLOR_BETA_2,
+                         shadow_alpha_beta_1=ECG_GEN_DEFAULT_SHADOW_ALPHA_BETA_1,
+                         shadow_alpha_beta_2=ECG_GEN_DEFAULT_SHADOW_ALPHA_BETA_2,
+                         shadow_relative_start_point_mu=ECG_GEN_DEFAULT_SHADOW_RELATIVE_START_POINT_MU,
+                         shadow_relative_start_point_sd=ECG_GEN_DEFAULT_SHADOW_RELATIVE_START_POINT_SD,
+                         shadow_relative_end_point_mu=ECG_GEN_DEFAULT_SHADOW_RELATIVE_END_POINT_MU,
+                         shadow_relative_end_point_sd=ECG_GEN_DEFAULT_SHADOW_RELATIVE_END_POINT_SD,
+                         shadow_blur_factor_mu=ECG_GEN_DEFAULT_SHADOW_BLUR_FACTOR_MU,
+                         shadow_blur_factor_sd=ECG_GEN_DEFAULT_SHADOW_BLUR_FACTOR_SD,
+                         white_noise_p_beta_1=ECG_GEN_DEFAULT_WHITE_NOISE_P_BETA_1,
+                         white_noise_p_beta_2=ECG_GEN_DEFAULT_WHITE_NOISE_P_BETA_2,
+                         white_noise_sd_mu=ECG_GEN_DEFAULT_WHITE_NOISE_SD_MU,
+                         white_noise_sd_sd=ECG_GEN_DEFAULT_WHITE_NOISE_SD_SD,
                          ecg_image=None,
                          background_image=None):
     """
@@ -242,7 +319,7 @@ def get_random_ecg_photo(original_image_scaling_factor_mu=1.0,
                                          (x = P_e*image_width, y = P_e*image_height)
     :param shadow_blur_factor_mu: mu parameter of Gaussian RV determining the factor by which to blur the shadow
                                   added to the ECG paper in the resulting image
-    :param shadow_blur_factor_sigma: sigma parameter of Gaussian RV determining the factor by which to blur the shadow
+    :param shadow_blur_factor_sd: sigma parameter of Gaussian RV determining the factor by which to blur the shadow
                                      added to the ECG paper in the resulting image
     :param white_noise_p_beta_1:  alpha parameter of Beta distribution (0.0 - 1.0) from which to draw the P parameter
                                   of the Bernoulli distribution determining whether white noise is to be added to a
@@ -250,27 +327,27 @@ def get_random_ecg_photo(original_image_scaling_factor_mu=1.0,
     :param white_noise_p_beta_2:  beta parameter of Beta distribution (0.0 - 1.0) from which to draw the P parameter
                                   of the Bernoulli distribution determining whether white noise is to be added to a
                                   given pixel
-    :param white_noise_sigma_mu: mu parameter of Gaussian distribution from which to draw the sigma parameter of the
+    :param white_noise_sd_mu: mu parameter of Gaussian distribution from which to draw the sigma parameter of the
                                  Gaussian RV determining the intensity of white noise to add to a given pixel
-    :param white_noise_sigma_sigma: sigma parameter of Gaussian distribution from which to draw the sigma parameter of
-                                    the Gaussian RV determining the intensity of white noise to add to a given pixel
+    :param white_noise_sd_sd: sigma parameter of Gaussian distribution from which to draw the sigma parameter of
+                              the Gaussian RV determining the intensity of white noise to add to a given pixel
     :param ecg_image: image of the ECG paper to use, or None to generate an ECG image from a random record in the PTB-XL
                       dataset
     :param background_image: background image to use, or None to select a random background image from the "backgrounds"
                              dataset
-    :return: image of simulated photograph of an ECG recording, metadata of associated ECG, dict with positions of
-             leads on image (top-left, top-right, bottom-left, bottom-right), and angle by which the ECG image was
-             rotated
+    :return: image of simulated photograph of an ECG recording, transformed mask images, metadata of associated ECG,
+             dict with positions of leads on image (top-left, top-right, bottom-left, bottom-right), and angle by which
+             the ECG image was rotated
     """
     ecg_data = None
     if ecg_image is None:
-        ecg_image, ecg_data, image_lead_pos = generate_example_ecg_image()
+        ecg_image, mask_images, ecg_data, image_lead_pos = generate_example_ecg_image()
     original_image_scaling_factor =\
         np.clip(np.random.normal(original_image_scaling_factor_mu, original_image_scaling_factor_sd), 0.0, np.infty)
     blur_factor = np.random.normal(blur_factor_mu, blur_factor_sd)
     shadow_relative_start_point = np.random.normal(shadow_relative_start_point_mu, shadow_relative_start_point_sd)
     shadow_relative_end_point = np.random.normal(shadow_relative_end_point_mu, shadow_relative_end_point_sd)
-    shadow_blur_factor = np.clip(np.random.normal(shadow_blur_factor_mu, shadow_blur_factor_sigma), 0.0, np.infty)
+    shadow_blur_factor = np.clip(np.random.normal(shadow_blur_factor_mu, shadow_blur_factor_sd), 0.0, np.infty)
     ecg_paper_scale = np.random.normal(ecg_paper_scale_mu, ecg_paper_scale_sd)
     ecg_paper_y_skew = np.random.normal(ecg_paper_y_skew_mu, ecg_paper_y_skew_sd)
     rotation_angle = np.random.normal(rotation_angle_mu, rotation_angle_sd)
@@ -281,28 +358,30 @@ def get_random_ecg_photo(original_image_scaling_factor_mu=1.0,
     shadow_color = np.random.beta(shadow_color_beta_1, shadow_color_beta_2)
     shadow_alpha = np.random.beta(shadow_alpha_beta_1, shadow_alpha_beta_2)
     white_noise_p = np.random.beta(white_noise_p_beta_1, white_noise_p_beta_2)
-    white_noise_sigma = np.random.normal(white_noise_sigma_mu, white_noise_sigma_sigma)
-    ecg_photo, photo_lead_pos = get_ecg_photo_from_image(ecg_image,
-                                                         original_image_scaling_factor,
-                                                         blur_factor,
-                                                         ecg_paper_scale,
-                                                         ecg_paper_y_skew,
-                                                         rotation_angle,
-                                                         ecg_paper_relative_translation_x,
-                                                         ecg_paper_relative_translation_y,
-                                                         shadow_color,
-                                                         shadow_alpha,
-                                                         shadow_relative_start_point,
-                                                         shadow_relative_end_point,
-                                                         shadow_blur_factor,
-                                                         white_noise_p,
-                                                         white_noise_sigma,
-                                                         background_image,
-                                                         image_lead_pos)
-    return ecg_photo, ecg_data, photo_lead_pos, rotation_angle
+    white_noise_sd = np.random.normal(white_noise_sd_mu, white_noise_sd_sd)
+    ecg_photo, new_mask_images, photo_lead_pos = get_ecg_photo_from_image(ecg_image,
+                                                                          mask_images,
+                                                                          original_image_scaling_factor,
+                                                                          blur_factor,
+                                                                          ecg_paper_scale,
+                                                                          ecg_paper_y_skew,
+                                                                          rotation_angle,
+                                                                          ecg_paper_relative_translation_x,
+                                                                          ecg_paper_relative_translation_y,
+                                                                          shadow_color,
+                                                                          shadow_alpha,
+                                                                          shadow_relative_start_point,
+                                                                          shadow_relative_end_point,
+                                                                          shadow_blur_factor,
+                                                                          white_noise_p,
+                                                                          white_noise_sd,
+                                                                          background_image,
+                                                                          image_lead_pos)
+    return ecg_photo, new_mask_images, ecg_data, photo_lead_pos, rotation_angle
 
 
 def get_ecg_photo_from_image(ecg_image,
+                             mask_images,
                              original_image_scaling_factor,
                              blur_factor,
                              ecg_paper_scale,
@@ -316,13 +395,16 @@ def get_ecg_photo_from_image(ecg_image,
                              shadow_relative_end_point,
                              shadow_blur_factor,
                              white_noise_p,
-                             white_noise_sigma,
+                             white_noise_sd,
                              background_image=None,
                              image_lead_pos=None):
     """
     Generate and return a simulated photograph of an ECG recording, using the given arguments as parameters and the
     given ECG image
     :param ecg_image: ECG image to use when generating the photograph
+    :param mask_images: a list containing mask images of segmentation GT
+                        (with classes "ECG curve" at index 0; "thick horizontal line" at 1;
+                         1"thick vertical line" at 2)
     :param image_lead_pos: positions of leads on image (or None;
                                                         format: (top-left, top-right, bottom-left, bottom-right))
     :param original_image_scaling_factor: factor by which to scale the resulting image
@@ -346,12 +428,20 @@ def get_ecg_photo_from_image(ecg_image,
     :param shadow_blur_factor: factor by which to blur the shadow added to the ECG paper in the resulting image
     :param white_noise_p: P parameter of Bernoulli distribution determining whether white noise is to be added to a
                           given pixel
-    :param white_noise_sigma: sigma parameter of Gaussian RV determining the intensity of white noise to add to a
-                              given pixel
+    :param white_noise_sd: sigma parameter of Gaussian RV determining the intensity of white noise to add to a
+                           given pixel
     :param background_image: background image to use, or None to select a random background image from the "backgrounds"
                              dataset
-    :return: image of simulated photograph of the given ECG recording paper image
+    :return: image of simulated photograph of the given ECG recording paper image, transformed mask images,
+             dict with positions of leads on image (top-left, top-right, bottom-left, bottom-right)
     """
+
+    # !!!!!!!!!! TODO: remove! !!!!!!!!!!
+    # ecg_image.convert('RGB').save('__img.jpg')
+    # [img_obj.save(f'__{idx}.png') for idx, img_obj in enumerate(mask_images)]
+
+    new_mask_image_fgs = [img_obj.copy() for img_obj in mask_images]
+    
     if background_image is None:
         background_image = get_background_image(random.randint(0, 27))
 
@@ -366,7 +456,8 @@ def get_ecg_photo_from_image(ecg_image,
     width_fg_orig, height_fg_orig = fg.size
 
     size = original_image_scaling_factor * width_bg, original_image_scaling_factor * height_bg
-    fg.thumbnail(size, Image.ANTIALIAS)
+    for img_obj in [fg, *new_mask_image_fgs]:
+        img_obj.thumbnail(size, Image.ANTIALIAS)
     width_fg, height_fg = fg.size
 
     # rescale
@@ -383,6 +474,8 @@ def get_ecg_photo_from_image(ecg_image,
     else:
         image_lead_pos_scaled = None
 
+    # do not copy the background; instead, initialize a transparent image with the same size as the background
+
     limit_size = 1.5 * width_fg, 1.5 * height_fg
     bg.thumbnail(limit_size, Image.ANTIALIAS)
     width_bg, height_bg = bg.size
@@ -396,19 +489,38 @@ def get_ecg_photo_from_image(ecg_image,
                   shadow_relative_end_point * width_fg, shadow_relative_end_point * height_fg),
                  fill=(shadow_color_int, shadow_color_int, shadow_color_int, shadow_alpha_int))
     transp = transp.filter(ImageFilter.GaussianBlur(shadow_blur_factor))
+    
     fg.paste(Image.alpha_composite(fg, transp))
 
     # shearing the image
     shearing_factor_vertical = ecg_paper_scale * ecg_paper_y_skew
     shearing_factor_horizontal = ecg_paper_scale
-    rot, photo_lead_pos = scale_rotate_translate(fg, angle=rotation_angle, sr_center=None, displacement=None,
-                                                 scale=(shearing_factor_vertical, shearing_factor_horizontal),
-                                                 image_lead_pos=image_lead_pos_scaled)
+
+    crop_bbox = None
+
+    def srt(img):
+        nonlocal crop_bbox
+        _rot, _photo_lead_pos, crop_bbox =\
+            scale_rotate_translate(img, angle=rotation_angle, sr_center=None,
+                                   displacement=None, scale=(shearing_factor_vertical, shearing_factor_horizontal),
+                                   image_lead_pos=image_lead_pos_scaled, crop_bbox=crop_bbox)
+        return _rot, _photo_lead_pos
+
+    rot, photo_lead_pos = srt(fg)
+
+    for img_idx, img_obj in enumerate(new_mask_image_fgs):
+        rot_img_obj, _ = srt(img_obj)
+        new_mask_image_fgs[img_idx] = rot_img_obj
+    
     width_fg, height_fg = rot.size
     paste_x_coord = int((width_bg - width_fg) / 2 + ecg_paper_relative_translation_x * width_bg)
     paste_y_coord = int((height_bg - height_fg) / 2 + ecg_paper_relative_translation_y * height_bg)
 
     bg.paste(rot, (paste_x_coord, paste_y_coord), rot)
+
+    new_mask_image_bgs = [Image.new('RGBA', bg.size, (0, 0, 0, 0)) for _ in range(len(mask_images))]
+    for img_idx, img_obj in enumerate(new_mask_image_fgs):
+        new_mask_image_bgs[img_idx].paste(img_obj, (paste_x_coord, paste_y_coord), img_obj)
 
     # rescale again
     if photo_lead_pos is not None:
@@ -431,8 +543,8 @@ def get_ecg_photo_from_image(ecg_image,
         num_channels = len(bg_rgb.getbands())
         img_shape = (height_bg, width_bg, num_channels)
         white_noise_mask = np.random.binomial(n=1, p=white_noise_p, size=img_shape)
-        white_noise = np.random.normal(0, white_noise_sigma, size=img_shape)
+        white_noise = np.random.normal(0, white_noise_sd, size=img_shape)
         img_array = np.clip(np.array(bg_rgb) + white_noise_mask * white_noise, 0, 255).astype(np.uint8)
         bg = Image.fromarray(img_array)
 
-    return bg, photo_lead_pos
+    return bg, new_mask_image_bgs, photo_lead_pos
