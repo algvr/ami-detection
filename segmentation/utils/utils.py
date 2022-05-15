@@ -21,7 +21,7 @@ MODE_SEGMENTATION = 0
 MODE_IMAGE_CLASSIFICATION = 1
 MODE_TIME_SERIES_CLASSIFICATION = 2
 
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # go one dir up from the dir this file is in
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # go two dirs up from the dir this file is in
 SESSION_ID = int(time.time() * 1000)  # import time of utils.py in milliseconds will be the session ID
 IS_DEBUG = getattr(sys, 'gettrace', None) is not None and getattr(sys, 'gettrace', lambda: None)() is not None
 ACCEPTED_IMAGE_EXTENSIONS = [".png", ".jpeg", ".jpg", ".gif"]

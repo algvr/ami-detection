@@ -1,3 +1,11 @@
+import os
+import sys
+
+current_dir = os.path.dirname(os.path.realpath(__file__))
+parent_parent_dir = os.path.dirname(os.path.dirname(current_dir))
+sys.path.append(parent_parent_dir)
+
+
 # Designed and implemented jointly with Noureddine Gueddach, Anne Marx, Mateusz Nowak (ETH Zurich)
 
 import abc
@@ -5,13 +13,14 @@ import datetime
 import errno
 import json
 import numpy as np
-import os
 import warnings
 from PIL import Image
 import shutil
 from typeguard import resolve_forwardref
 import urllib3
 import zipfile
+
+
 
 from datasets.ptb_xl.data_handling import PTB_XL_LEAD_LABELS
 from utils import *
@@ -31,7 +40,7 @@ class DataLoader(abc.ABC):
     def __init__(self, dataset, mode=DEFAULT_MODE):
         self.dataset = dataset
         self.mode = mode
-        check = self.__download_data(dataset)
+        check = 1 #  self.__download_data(dataset)
         if check == -1:
             raise RuntimeError("Dataset download failed")
 

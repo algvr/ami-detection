@@ -31,7 +31,7 @@ from fastai.callback.core import *
 
 import fastai.vision.core
 
-from fastai.vision.widgets import *
+# from fastai.vision.widgets import *
 
 def get_new_point_pos(pt_x, pt_y, angle_deg, img_width, img_height):
     # credit to https://stackoverflow.com/a/51964802
@@ -52,7 +52,11 @@ class CustomHTTPRequestHandler(BaseHTTPRequestHandler):
 
         # set model here
         self.segmentation_model = UNetTF
-        # set checkpoint to load here
+        
+        
+        # !!! set checkpoint of segmentation model to load here !!!
+
+
         load_checkpoint_path = os.path.join('downloaded_cps', 'cp_ep-00010_it-00710_step-10400.ckpt')
         # change depending on whether this is a TF model or a Torch model
         self.segmentation_model.load_weights(load_checkpoint_path)
@@ -676,7 +680,7 @@ def process_request(segmentation_model, objects, image_str, token, original_samp
 
     # TODO: also add Hough transform parameters!
 
-    lead_logging_font = ImageFont.truetype('fonts/courier_prime_bold.ttf', size=18)
+    lead_logging_font = ImageFont.truetype('dataset_generation/fonts/courier_prime_bold.ttf', size=18)
 
     def get_lead_details_img(lead_name):
         # just use max width of 1000px, max height of 2600px 
@@ -727,7 +731,7 @@ def process_request(segmentation_model, objects, image_str, token, original_samp
         img = get_lead_details_img(lead_name)
         img.convert('RGB').save(os.path.join(seg_dir, f'{lead_name}.jpg'))
         
-    classification_merged_input_img.save(os.path.join(seg_dir, f'classification_merged_input_img.jpg'))
+    # classification_merged_input_img.save(os.path.join(seg_dir, f'classification_merged_input_img.jpg'))
 
 
     if sample_idx is not None:
@@ -744,15 +748,16 @@ def process_request(segmentation_model, objects, image_str, token, original_samp
     #img_tensor[0, 1] = ((img_tensor[0, 1] / 255.0) - imagenet_stats[0][1]) / imagenet_stats[1][1]
     #img_tensor[0, 2] = ((img_tensor[0, 2] / 255.0) - imagenet_stats[0][2]) / imagenet_stats[1][2]
 
-    pred_input = fastai.vision.core.PILImage.create(np.array(classification_merged_input_img.convert('RGB')))
+    if learner is not None:
+        pred_input = fastai.vision.core.PILImage.create(np.array(classification_merged_input_img.convert('RGB')))
 
-    pred = learner.predict(pred_input)[2]
-    print('')
-    print(f'>>>>>>>>>> Prediction: {pred} <<<<<<<<<<')
-    print('')
+        pred = learner.predict(pred_input)[2]
+        print('')
+        print(f'>>>>>>>>>> Prediction: {pred} <<<<<<<<<<')
+        print('')
 
-    return {'success': True, 'token': str(token),
-            'normal': pred[0], 'non-mi-related-abnormalities': pred[1], 'mi': pred[2]}
+        return {'success': True, 'token': str(token),
+                'normal': pred[0], 'non-mi-related-abnormalities': pred[1], 'mi': pred[2]}
 
 
 def get_request_params_from_json(original_sample_json_path):

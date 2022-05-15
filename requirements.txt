@@ -28,3 +28,14 @@ torch==1.11.0
 typing-extensions==4.1.1
 urllib3==1.26.8
 wfdb==3.4.1
+ipython==8.3.0
+tqdm==4.64.0
+ipykernel==6.13.0
+typeguard==2.13.3
+mlflow==1.25.1
+tensorflow==2.8.0
+torchvision==0.12.0
+pexpect==4.8.0
+paramiko==2.10.4 
+pysftp==0.2.9 
+fastai==2.6.3 
