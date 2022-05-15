@@ -60,7 +60,8 @@ def get_ecg_image(layout_array,
                   curve_line_width=DEFAULT_CURVE_LINE_WIDTH,
                   lead_label_font_size=DEFAULT_LEAD_LABEL_FONT_SIZE,
                   metadata_font_size=DEFAULT_METADATA_FONT_SIZE,
-                  add_metadata=True):
+                  add_metadata=True,
+                  draw_initial_calib_rectangle=True):
     """
     Returns an ECG paper image from the given layout array, recording array and parameters.
     Use "get_random_ecg_photo" and "get_ecg_photo_from_image" in "data_augmentation.py" to get images of simulated ECG
@@ -84,6 +85,7 @@ def get_ecg_image(layout_array,
     :param lead_label_font_size: font size of lead labels (aVR, I, II, ...) on ECG image
     :param metadata_font_size: font size of metadata (paper speed, ...) on ECG image
     :param add_metadata: whether metadata (paper speed, ...) should be added at the bottom of the image
+    :param draw_initial_calib_rectangle: specifies whether the initial calibration rectangle should be drawn
     :return: tuple of (Image, List[Image], dict): generated ECG image; mask images of segmentation GT (with classes
                                                   "ECG curve" at index 0; "thick horizontal line" at 1;
                                                   "thick vertical line" at 2); dict of lead positions
@@ -97,9 +99,9 @@ def get_ecg_image(layout_array,
     # recording_array should have 2 dimensions: timesteps, leads
 
     rows, cols, _ = layout_array.shape
-    calib_rect_small_cell_count = 9
+    calib_rect_small_cell_count = 9 if draw_initial_calib_rectangle else 0
     max_timesteps_per_row = np.max(np.sum(layout_array[:, :, 2] - layout_array[:, :, 1], axis=-1))
-    seconds_per_small_cell = 1.0 / paper_speed
+    seconds_per_small_cell = 1.0 / paper_speed  # one small cell always measures 1mm x 1mm
     timesteps_per_small_cell = timesteps_per_second * seconds_per_small_cell
     curve_y_scale = (1.0 / millivolts_per_small_cell) * small_cell_size
     calib_rect_width = calib_rect_small_cell_count * small_cell_size
@@ -185,11 +187,15 @@ def get_ecg_image(layout_array,
 
             x1 = cell_start_x
             y1 = cell_start_y + (vertical_small_cells_per_lead // 2 + 1) * small_cell_size  # + 1: add some offset for the lead label
-            x_square = (x1, x1 + 2 * small_cell_size, x1 + 2 * small_cell_size, x1 + 7 * small_cell_size, x1 + 7 * small_cell_size, x1 + 9 * small_cell_size)
-            y_square = (y1, y1, y1 - 10 * small_cell_size, y1 - 10 * small_cell_size, y1, y1)
-            for draw_obj in [draw, draw_curve]:
-                draw_obj.line(list(zip(x_square, y_square)), width=curve_line_width, fill="#000000")
-            x_shifted = x1 + calib_rect_width
+
+            if draw_initial_calib_rectangle:
+                x_square = (x1, x1 + 2 * small_cell_size, x1 + 2 * small_cell_size, x1 + 7 * small_cell_size, x1 + 7 * small_cell_size, x1 + 9 * small_cell_size)
+                y_square = (y1, y1, y1 - 10 * small_cell_size, y1 - 10 * small_cell_size, y1, y1)
+                for draw_obj in [draw, draw_curve]:
+                    draw_obj.line(list(zip(x_square, y_square)), width=curve_line_width, fill="#000000")
+                x_shifted = x1 + calib_rect_width
+            else:
+                x_shifted = x1
 
             # draw ECG curve
 

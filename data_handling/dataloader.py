@@ -69,7 +69,20 @@ class DataLoader(abc.ABC):
                 if ext.lower() == '.json':
                     path = os.path.join(data_dir, filename)
                     if self.mode == MODE_IMAGE_CLASSIFICATION:
-                        data_paths.append(path)
+                        with open(path) as f:
+                            try:
+                                config = json.loads(f.read())
+                                if '_classification_input_img_paths' in config:
+                                    discard = False
+                                    for _path in config['_classification_input_img_paths']:
+                                        if not os.path.exists(_path):
+                                            discard = True
+                                            break
+                                    
+                                    if not discard:
+                                        data_paths.append(path)
+                            except:
+                                pass
                     elif self.mode == MODE_SEGMENTATION:
                         with open(path) as f:
                             file_data = json.loads(f.read())
@@ -273,12 +286,15 @@ class DataLoader(abc.ABC):
         elif mode == MODE_IMAGE_CLASSIFICATION:
             with open(path, 'r') as f:
                 data = json.loads(f.read())
-            if '_lead_img_paths' not in data:
-                raise RuntimeError('Please extract individual lead images from the ECG dataset using '
-                                    'data_augmentation.ipynb.')
+            #if '_lead_img_paths' not in data:
+            #    raise RuntimeError('Please extract individual lead images from the ECG dataset using '
+            #                        'data_augmentation.ipynb.')
+            if '_classification_input_img_paths' not in data:
+                raise RuntimeError('Please extract input images for classification from the ECG dataset using '
+                                    'request_processing_main.py.')
             if '_is_normal' not in data or '_is_mi' not in data:
                 raise RuntimeError('Please ensure the samples are labelled using the boolean _is_normal and _is_mi '
-                                'properties in the respective JSON files.')
+                                   'properties in the respective JSON files.')
 
             if data['_is_normal']:
                 gt = 0
@@ -289,44 +305,64 @@ class DataLoader(abc.ABC):
 
             # construct sample
 
-            lead_img_paths = data['_lead_img_paths']
-            lead_imgs = {}
-
-            largest_width = 0
-            largest_height = 0
-            for lead_name, path in lead_img_paths.items():
-                # perform further augmentations (contrast increase, etc.) here
-                lead_img = Image.open(path).convert('L')  # convert to grayscale
-                lead_imgs[lead_name] = lead_img
-                lead_img_width, lead_img_height = lead_img.size
-                largest_width = max(largest_width, lead_img_width)
-                largest_height = max(largest_height, lead_img_height)
-
-            if valid_resolutions is not None:
-                final_width, final_height = DataLoader._get_valid_sample_resolution(largest_width, largest_height)
-            else:
-                final_width, final_height = largest_width, largest_height
-
-            np_channel_list = []
-            # now, we need to ensure an order that is consistent across recordings
-            # we use the PTB-XL order here
-            for channel_idx, ptbxl_lead_name in enumerate(PTB_XL_LEAD_LABELS):
-                channel_img = Image.new('L', (final_width, final_height), 255)  # initialize with all white
-                # look for matching lead in current recording's leads
-                for lead_name, lead_img in lead_img_paths.items():
-                    # do not perform a substring matching (due to e.g. VL and aVL being different leads)
-                    if lead_name.lower() == ptbxl_lead_name.lower():
-                        lead_img_width, lead_img_height = lead_imgs[lead_name].size
-                        if lead_img_width <= final_width and lead_img_height <= final_height:
-                            channel_img.paste(lead_imgs[lead_name], (0, 0))  # paste to top-left corner
-                        else:
-                            shrinked = lead_imgs[lead_name].thumbnail((final_width, final_height))
-                            channel_img.paste(shrinked, (0, 0))  # paste to top-left corner
-                        np_channel_list.append(np.array(channel_img))
-                        break
-            sample = np.stack(np_channel_list)
+            channel_img_list = []
+            with Image.open(data['_merged_classification_input_img_path']).convert('L') as img:
+                for channel_idx in range(3):
+                    channel_img_list.append(255 - np.array(img))
+            sample = np.stack(channel_img_list, axis=0)
             sample = np.moveaxis(sample, 0, -1)  # convert to HWC format
             return sample, gt
+
+            ##########
+
+            # channel_img_list = []
+            # for _classification_input_img_path in data['_classification_input_img_paths']:
+            #     with Image.open(_classification_input_img_path) as img:
+            #         channel_img_list.append(np.array(img))
+
+            # sample = np.stack(channel_img_list)
+            # sample = np.moveaxis(sample, 0, -1)  # convert to HWC format
+            # return sample, gt
+
+            ##########
+
+            # lead_img_paths = data['_lead_img_paths']
+            # lead_imgs = {}
+            # largest_width = 0
+            # largest_height = 0
+            # for lead_name, path in lead_img_paths.items():
+            #     # perform further augmentations (contrast increase, etc.) here
+            #     lead_img = Image.open(path).convert('L')  # convert to grayscale
+            #     lead_imgs[lead_name] = lead_img
+            #     lead_img_width, lead_img_height = lead_img.size
+            #     largest_width = max(largest_width, lead_img_width)
+            #     largest_height = max(largest_height, lead_img_height)
+
+            # if valid_resolutions is not None:
+            #     final_width, final_height = DataLoader._get_valid_sample_resolution(largest_width, largest_height)
+            # else:
+            #     final_width, final_height = largest_width, largest_height
+
+            # np_channel_list = []
+            # # now, we need to ensure an order that is consistent across recordings
+            # # we use the PTB-XL order here
+            # for channel_idx, ptbxl_lead_name in enumerate(PTB_XL_LEAD_LABELS):
+            #     channel_img = Image.new('L', (final_width, final_height), 255)  # initialize with all white
+            #     # look for matching lead in current recording's leads
+            #     for lead_name, lead_img in lead_img_paths.items():
+            #         # do not perform a substring matching (due to e.g. VL and aVL being different leads)
+            #         if lead_name.lower() == ptbxl_lead_name.lower():
+            #             lead_img_width, lead_img_height = lead_imgs[lead_name].size
+            #             if lead_img_width <= final_width and lead_img_height <= final_height:
+            #                 channel_img.paste(lead_imgs[lead_name], (0, 0))  # paste to top-left corner
+            #             else:
+            #                 shrinked = lead_imgs[lead_name].thumbnail((final_width, final_height))
+            #                 channel_img.paste(shrinked, (0, 0))  # paste to top-left corner
+            #             np_channel_list.append(np.array(channel_img))
+            #             break
+            # sample = np.stack(np_channel_list)
+            # sample = np.moveaxis(sample, 0, -1)  # convert to HWC format
+            # return sample, gt
         else:
             raise NotImplementedError()
 

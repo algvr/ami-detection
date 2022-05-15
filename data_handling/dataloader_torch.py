@@ -10,8 +10,8 @@ from models import *
 
 
 class TorchDataLoader(DataLoader):
-    def __init__(self, dataset):
-        super().__init__(dataset)
+    def __init__(self, dataset, mode=DEFAULT_MODE):
+        super().__init__(dataset, mode)
 
     def get_dataset_sizes(self, split):
         """

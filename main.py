@@ -66,7 +66,8 @@ def main():
     arg_dict = {**known_args_dict, **unknown_args_dict}
 
     factory = Factory.get_factory(known_args.model)
-    dataloader = factory.get_dataloader_class()(**{k: v for k, v in arg_dict.items() if k.lower() in dataloader_args})
+    dataloader = factory.get_dataloader_class()(**{k: v for k, v in arg_dict.items() if k.lower() in dataloader_args},
+                                                mode=factory.get_mode())
     model = factory.get_model_class()(**{k: v for k, v in arg_dict.items() if k.lower() not in [*trainer_args,
                                                                                                 *dataloader_args,
                                                                                                 *filter_args]})

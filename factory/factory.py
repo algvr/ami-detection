@@ -15,15 +15,19 @@ class Factory(abc.ABC):
     
     @abc.abstractmethod
     def get_trainer_class(self):
-        return NotImplementedError
+        raise NotImplementedError
     
     @abc.abstractmethod
     def get_model_class(self):
-        return NotImplementedError
+        raise NotImplementedError
     
     @abc.abstractmethod
     def get_dataloader_class(self):
-        return NotImplementedError
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def get_mode(self):
+        raise NotImplementedError 
     
     @staticmethod
     def get_factory(model_name):
@@ -32,13 +36,18 @@ class Factory(abc.ABC):
             return UNetTFFactory()
         elif model_name_lower_no_sep in ["unet++", "unetplusplus"]:
             return UNetPlusPlusFactory()
-        elif model_name_lower_no_sep == "attunet":
+        elif model_name_lower_no_sep in ["attunet", "attentionunet"]:
             return AttUNetFactory()
         elif model_name_lower_no_sep in ["attunet++", "attentionunet++", "attentionunetplusplus", "attunetplusplus",
                                          "attunetplusplustf"]:
             return AttUNetPlusPlusTFFactory()
         elif model_name_lower_no_sep in ["resnet50", "resnet50tf"]:
             return ResNet50TFFactory()
+        elif model_name_lower_no_sep in ["resnetgenerichead", "resnettfgenerichead",
+                                         "resnetgenhead", "resnettfgenhead"]:
+            return ResNetTFGenericHeadFactory()
+        elif model_name_lower_no_sep in ["resnet152", "resnet152tf"]:
+            return ResNet152TFFactory()
         else:
             print(f"The factory for the model {model_name} doesn't exist. Check if you wrote the model name "
                   f"correctly and implemented a corresponding factory in factory.py.")
@@ -54,6 +63,9 @@ class UNetTFFactory(Factory):
     def get_dataloader_class(self):
         return TFDataLoader
 
+    def get_mode(self):
+        return MODE_SEGMENTATION
+
 
 class UNetPlusPlusFactory(Factory):
     def get_trainer_class(self):
@@ -64,6 +76,9 @@ class UNetPlusPlusFactory(Factory):
 
     def get_dataloader_class(self):
         return TFDataLoader
+        
+    def get_mode(self):
+        return MODE_SEGMENTATION
 
 
 class AttUNetFactory(Factory):
@@ -75,6 +90,9 @@ class AttUNetFactory(Factory):
 
     def get_dataloader_class(self):
         return TFDataLoader
+        
+    def get_mode(self):
+        return MODE_SEGMENTATION
 
 
 class AttUNetPlusPlusTFFactory(Factory):
@@ -86,24 +104,47 @@ class AttUNetPlusPlusTFFactory(Factory):
 
     def get_dataloader_class(self):
         return TFDataLoader
+        
+    def get_mode(self):
+        return MODE_SEGMENTATION
 
-
-class AttUNetPlusPlusTFFactory(Factory):
-    def get_trainer_class(self):
-        return AttUNetPlusPlusTrainer
-
-    def get_model_class(self):
-        return AttUNetPlusPlusTF
-
-    def get_dataloader_class(self):
-        return TFDataLoader
 
 class ResNet50TFFactory(Factory):
     def get_trainer_class(self):
         return ResNet50TFTrainer
 
     def get_model_class(self):
-        return ResNet50
+        return ResNet50TF
 
     def get_dataloader_class(self):
         return TFDataLoader
+
+    def get_mode(self):
+        return MODE_IMAGE_CLASSIFICATION
+
+
+class ResNetTFGenericHeadFactory(Factory):
+    def get_trainer_class(self):
+        return ResNet50TFTrainer
+
+    def get_model_class(self):
+        return ResNetTFGenericHead
+
+    def get_dataloader_class(self):
+        return TFDataLoader
+
+    def get_mode(self):
+        return MODE_IMAGE_CLASSIFICATION
+
+class ResNet152TFFactory(Factory):
+    def get_trainer_class(self):
+        return ResNet50TFTrainer
+
+    def get_model_class(self):
+        return ResNet152TF
+
+    def get_dataloader_class(self):
+        return TFDataLoader
+
+    def get_mode(self):
+        return MODE_IMAGE_CLASSIFICATION

@@ -98,8 +98,14 @@ class TFTrainer(Trainer, abc.ABC):
 
         def on_train_batch_end(self, batch, logs=None):
             if self.do_evaluate and self.iteration_idx % self.trainer.evaluation_interval == 0:
-                precision, recall, f1_score = self.trainer.get_precision_recall_F1_score_validation()
-                metrics = {'precision': precision, 'recall': recall, 'f1_score': f1_score}
+                metrics = {}
+                for classes in ([[3], [1, 2], [1, 2, 3]] if self.trainer.dataloader.mode == MODE_SEGMENTATION\
+                                else [[0], [1], [2], [1, 2], [0, 1, 2]]):
+                    precision, recall, f1_score = self.trainer.get_precision_recall_F1_score_validation(classes)
+                    class_str = "_".join(map(str, classes))
+                    metrics = {**metrics, f'precision__{class_str}': precision,
+                                          f'recall__{class_str}': recall,
+                                          f'f1_score__{class_str}': f1_score}
                 print('\nMetrics at aggregate iteration %i (ep. %i, ep.-it. %i): %s'
                       % (self.iteration_idx, self.epoch_idx, batch, str(metrics)))
                 if mlflow_logger.logging_to_mlflow_enabled():
@@ -114,6 +120,7 @@ class TFTrainer(Trainer, abc.ABC):
                                   f'_it-{"%05i" % self.epoch_iteration_idx}' +\
                                   f'_step-{self.iteration_idx}.ckpt'
                 keras.models.save_model(model=self.trainer.model, filepath=checkpoint_path)
+                mlflow_logger.log_checkpoints()
             
             self.iteration_idx += 1
             self.epoch_iteration_idx += 1
@@ -227,14 +234,14 @@ class TFTrainer(Trainer, abc.ABC):
         _, _, f1_score = self.get_precision_recall_F1_score_validation()
         return f1_score
 
-    def get_precision_recall_F1_score_validation(self):
+    def get_precision_recall_F1_score_validation(self, classes=DEFAULT_F1_CLASSES):
         if self.dataloader.mode == MODE_SEGMENTATION:
             precisions, recalls, f1_scores = [], [], []
             _, test_dataset_size, _ = self.dataloader.get_dataset_sizes(split=self.split)
             for x, y in self.test_loader.take(test_dataset_size):
                 output = self.model(x)
                 preds = tf.cast(output >= self.segmentation_threshold, tf.dtypes.int8)
-                precision, recall, f1_score = precision_recall_f1_score_tf(preds, y)
+                precision, recall, f1_score = precision_recall_f1_score_tf(preds, y, classes)
                 precisions.append(precision.numpy().item())
                 recalls.append(recall.numpy().item())
                 f1_scores.append(f1_score.numpy().item())
@@ -251,7 +258,7 @@ class TFTrainer(Trainer, abc.ABC):
             
             preds_cat = tf.concat(preds_list, axis=0)
             ys_cat = tf.concat(ys_list, axis=0)
-            precision, recall, f1_score = precision_recall_f1_score_tf(preds_cat, ys_cat)
+            precision, recall, f1_score = precision_recall_f1_score_tf(preds_cat, ys_cat, classes)
             return precision.numpy().item(), recall.numpy().item(), f1_score.numpy().item()
         else:
             raise NotImplementedError()

@@ -28,7 +28,7 @@ class HyperParamOptimizer:
         self.model_class = factory.get_model_class()
         self.trainer_class = factory.get_trainer_class()
         # already initializer dataloader, because only one is needed
-        self.dataloader = factory.get_dataloader_class()(param_space['dataset']['name'])
+        self.dataloader = factory.get_dataloader_class()(param_space['dataset']['name'], mode=factory.get_mode())
         # hyperopt can only minimize loss functions --> change sign if loss has to be maximized
         self.minimize_loss = param_space['training']['minimize_loss']
         # specify names for mlflow

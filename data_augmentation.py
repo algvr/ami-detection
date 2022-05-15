@@ -10,6 +10,9 @@ from PIL import Image, ImageFilter, ImageEnhance, ImageDraw
 import random
 
 
+MAX_ECG_RECORDINGS_TO_LOAD = 10000
+
+
 def generate_example_ecg_image():
     """
     Generate and return an ECG image from a random recording of the PTB-XL dataset
@@ -22,7 +25,7 @@ def generate_example_ecg_image():
                        was generated from; the metadata has the same columns as in "ptbxl_database.csv"
              lead_pos: a dict with the positions of the leads (top-left, top-right, bottom-left, bottom-right)
     """
-    X, Y = ptb_xl_dh.get_ecg_array(max_samples=100)
+    X, Y = ptb_xl_dh.get_ecg_array(max_samples=MAX_ECG_RECORDINGS_TO_LOAD)
     num_recordings, _, _ = X.shape
     recording_idx = random.randint(0, num_recordings-1)
     recording = X[recording_idx]
@@ -172,7 +175,7 @@ ECG_GEN_DEFAULT_PAPER_SCALE_SD = 0.02
 ECG_GEN_DEFAULT_PAPER_Y_SKEW_MU = 1.0
 ECG_GEN_DEFAULT_PAPER_Y_SKEW_SD = 0.08
 ECG_GEN_DEFAULT_ROTATION_ANGLE_MU = 0.0
-ECG_GEN_DEFAULT_ROTATION_ANGLE_SD = 5.0
+ECG_GEN_DEFAULT_ROTATION_ANGLE_SD = 1.5
 ECG_GEN_DEFAULT_PAPER_RELATIVE_TRANSLATION_X_MU = 0.0
 ECG_GEN_DEFAULT_PAPER_RELATIVE_TRANSLATION_X_SD = 0.05
 ECG_GEN_DEFAULT_PAPER_RELATIVE_TRANSLATION_Y_MU = 0.0
@@ -435,10 +438,6 @@ def get_ecg_photo_from_image(ecg_image,
     :return: image of simulated photograph of the given ECG recording paper image, transformed mask images,
              dict with positions of leads on image (top-left, top-right, bottom-left, bottom-right)
     """
-
-    # !!!!!!!!!! TODO: remove! !!!!!!!!!!
-    # ecg_image.convert('RGB').save('__img.jpg')
-    # [img_obj.save(f'__{idx}.png') for idx, img_obj in enumerate(mask_images)]
 
     new_mask_image_fgs = [img_obj.copy() for img_obj in mask_images]
     

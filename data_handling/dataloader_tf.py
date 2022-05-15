@@ -13,8 +13,8 @@ from utils import *
 
 
 class TFDataLoader(DataLoader):
-    def __init__(self, dataset):
-        super().__init__(dataset)
+    def __init__(self, dataset, mode=DEFAULT_MODE):
+        super().__init__(dataset, mode)
 
     # Get the sizes of the training, test and unlabeled datasets associated with this DataLoader.
     # Args:

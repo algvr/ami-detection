@@ -58,9 +58,15 @@ class TorchTrainer(Trainer, abc.ABC):
 
         def on_train_batch_end(self):
             if self.do_evaluate and self.iteration_idx % self.trainer.evaluation_interval == 0:
-                precision, recall, f1_score = self.trainer.get_precision_recall_F1_score_validation()
-                metrics = {'precision': precision, 'recall': recall, 'f1_score': f1_score}
-                print('Metrics at aggregate iteration %i (ep. %i, ep.-it. %i): %s'
+                metrics = {}
+                for classes in ([[3], [1, 2], [1, 2, 3]] if self.trainer.dataloader.mode == MODE_SEGMENTATION\
+                                else [[0], [1], [2], [1, 2], [0, 1, 2]]):
+                    precision, recall, f1_score = self.trainer.get_precision_recall_F1_score_validation(classes)
+                    class_str = "_".join(map(str, classes))
+                    metrics = {**metrics, f'precision__{class_str}': precision,
+                                          f'recall__{class_str}': recall,
+                                          f'f1_score__{class_str}': f1_score}
+                print('\nMetrics at aggregate iteration %i (ep. %i, ep.-it. %i): %s'
                       % (self.iteration_idx, self.epoch_idx, self.epoch_iteration_idx, str(metrics)))
                 if mlflow_logger.logging_to_mlflow_enabled():
                     mlflow_logger.log_metrics(metrics, aggregate_iteration_idx=self.iteration_idx)
@@ -244,7 +250,7 @@ class TorchTrainer(Trainer, abc.ABC):
         _, _, f1_score = self.get_precision_recall_F1_score_validation()
         return f1_score
 
-    def get_precision_recall_F1_score_validation(self):
+    def get_precision_recall_F1_score_validation(self, classes=DEFAULT_F1_CLASSES):
         self.model.eval()
         preds_list, ys_list = [], []
         for (x, y) in self.test_loader:
@@ -260,7 +266,7 @@ class TorchTrainer(Trainer, abc.ABC):
 
         preds_cat = torch.cat(preds_list, dim=0)
         ys_cat = torch.cat(ys_list, dim=0)
-        precision, recall, f1_score = precision_recall_f1_score_torch(preds_cat, ys_cat)
+        precision, recall, f1_score = precision_recall_f1_score_torch(preds_cat, ys_cat, classes)
         return precision.cpu().detach().numpy().item(),\
                recall.cpu().detach().numpy().item(),\
                f1_score.cpu().detach().numpy().item()

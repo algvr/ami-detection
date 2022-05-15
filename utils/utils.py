@@ -27,14 +27,14 @@ IS_DEBUG = getattr(sys, 'gettrace', None) is not None and getattr(sys, 'gettrace
 ACCEPTED_IMAGE_EXTENSIONS = [".png", ".jpeg", ".jpg", ".gif"]
 DEFAULT_SEGMENTATION_THRESHOLD = 0.5
 DEFAULT_TRAIN_FRACTION = 0.8
-DEFAULT_MODE = MODE_SEGMENTATION
+DEFAULT_MODE = MODE_IMAGE_CLASSIFICATION
 DEFAULT_NUM_SAMPLES_TO_VISUALIZE = 36
-DEFAULT_TF_INPUT_SHAPE = ({MODE_SEGMENTATION:         (None, None, 3),
-                           MODE_IMAGE_CLASSIFICATION: (None, None, 12)})[DEFAULT_MODE]
 DATASET_ZIP_URLS = {
     "backgrounds": "https://polybox.ethz.ch/index.php/s/7hE6WIct12CZi66/download",
     "ptb_xl": "https://polybox.ethz.ch/index.php/s/6cYYSheXDP6ZiC5/download",
-    "ptb_v": "TODO: REPLACE PLACEHOLDER WITH PROPER URL ONCE DATASET CURATED"
+    "ptb_v": "TODO: REPLACE PLACEHOLDER WITH PROPER URL ONCE DATASET CURATED",
+    "ptb_v_080522": "https://polybox.ethz.ch/index.php/s/ti3QbYllkalkDOn/download",
+    "ptb_v_classification": "https://polybox.ethz.ch/index.php/s/nPfMjAtDprflZTP/download"
 }
 # in case multiple jobs are running in the same directory, SESSION_ID will prevent name conflicts
 CODEBASE_SNAPSHOT_ZIP_NAME = f"codebase_{SESSION_ID}.zip"
@@ -50,6 +50,18 @@ MLFLOW_PROFILING = False
 # (None to avoid sending Pushbullet notifications)
 DEFAULT_PUSHBULLET_ACCESS_TOKEN = pathlib.Path('pb_token.txt').read_text() if os.path.isfile('pb_token.txt') else None
 
+
+CLASSIFICATION_RNN_TIMESTEPS_PER_SECOND = 100
+LOGGING_IMG_WIDTH = 1000
+LOGGING_IMG_HEIGHT = 4000
+
+# gives input size of 480x480 per channel
+CLASSIFICATION_NETWORK_MAX_LEAD_WIDTH = 480
+CLASSIFICATION_NETWORK_LEAD_HEIGHT = 120  # height for a single lead
+
+DEFAULT_TF_INPUT_SHAPE = ({MODE_SEGMENTATION:         (None, None, 3),
+                           MODE_IMAGE_CLASSIFICATION: (CLASSIFICATION_NETWORK_MAX_LEAD_WIDTH,
+                                                       4 * CLASSIFICATION_NETWORK_LEAD_HEIGHT, 3)})[DEFAULT_MODE]
 
 ###########################################################################################
 ##################################    helper functions    #################################

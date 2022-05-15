@@ -80,7 +80,7 @@ def UNetPlusPlusTF(input_shape=DEFAULT_TF_INPUT_SHAPE,
 
     inputs = K.Input(input_shape)
     outputs = __build_model(inputs)
-    model = K.Model(inputs=inputs, outputs=outputs, name='UNetPlusPlus')
+    model = K.Model(inputs=inputs, outputs=outputs, name='UNetPlusPlusTF')
     # store parameters for the Trainer to be able to log them to MLflow
     model.dropout = dropout
     model.kernel_init = kernel_init

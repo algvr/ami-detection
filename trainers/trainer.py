@@ -16,6 +16,8 @@ import socket
 import tensorflow.keras as K
 import time
 
+from requests.auth import HTTPBasicAuth
+
 from data_handling import DataLoader
 from utils import *
 from utils.logging import mlflow_logger, optim_hyparam_serializer
@@ -155,7 +157,12 @@ class Trainer(abc.ABC):
             MLFLOW_INIT_ERROR_MSG = 'MLflow initialization failed. Will not use MLflow for this run.'
 
             try:
-                mlflow_pass = requests.get(MLFLOW_PASS_URL).text
+                os.environ['MLFLOW_TRACKING_USERNAME'] = 'dstses22'
+                os.environ['MLFLOW_TRACKING_PASSWORD'] = 'waiMoh7v'
+
+                mlflow_pass = requests.get(MLFLOW_PASS_URL,
+                                           auth=HTTPBasicAuth(os.environ['MLFLOW_TRACKING_USERNAME'],
+                                                              os.environ['MLFLOW_TRACKING_PASSWORD'])).text
                 try:
                     add_known_hosts(MLFLOW_HOST, MLFLOW_USER, mlflow_pass)
                 except:
@@ -280,8 +287,6 @@ class Trainer(abc.ABC):
         #               wrongly predicted line: dark red for vertical, darker red for horizontal
         #               (no missed lines)
         #               same priority order as in mask generation
-        
-
 
         correct_ecg_curve = np.logical_and(preds == 3, batch_ys == 3).astype(np.float32)
         wrong_ecg_curve = np.logical_and(preds == 3, ~(batch_ys == 3)).astype(np.float32)
