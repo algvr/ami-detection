@@ -6,6 +6,9 @@ import tqdm
 from models import *
 
 
+NUM_CHANNELS = 3
+
+
 if __name__ == '__main__':
     gpus = tf.config.experimental.list_physical_devices('GPU')
     for gpu in gpus:
@@ -14,15 +17,15 @@ if __name__ == '__main__':
     model_class = ResNet50TF
 
     # we only use one channel here for speed reasons
-    model = model_class(input_shape=(224, 224, 1))  # use 224x224 (works) just for initialization
+    model = model_class(input_shape=(224, 224, NUM_CHANNELS))  # use 224x224 (works) just for initialization
     
-    width_start = 16
-    width_end = 3000
-    width_step = 16
+    width_start = 640
+    width_end = 700
+    width_step = 8
     
-    height_start = 16
-    height_end = 3000
-    height_step = 16
+    height_start = 640
+    height_end = 700
+    height_step = 8
 
     range_width = range(width_start, width_end + 1, width_step)
     range_height = range(height_start, height_end + 1, height_step)
@@ -105,13 +108,13 @@ if __name__ == '__main__':
     with tqdm.tqdm(initial=iteration_idx, total=width_search_space_size * height_search_space_size) as progress_bar:
         for width in range_width:
             for height in range_height:
-                x = tf.zeros((1, width, height, 1)) 
+                x = tf.zeros((1, width, height, NUM_CHANNELS)) 
                 try:
                     try:
                         del model
                     except:
                         pass
-                    model = model_class(input_shape=(height, width, 1))
+                    model = model_class(input_shape=(height, width, NUM_CHANNELS))
                     output = model(x)
                     valid_resolutions.append((width, height))
                 except Exception as e:

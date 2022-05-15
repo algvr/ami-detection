@@ -134,9 +134,3 @@
 - For our project: Justify conceptual system by meta-analysis studies. ECGs legal implications, how to ensure privacy concerns in the webtool apps. For the disclaimer: check ETH spinoffs for the ones checking medical data. Check legal ecosystem via the spinoffs but not important at the moment. Ask Vaiva for asking the legal board of ETH. Recheck error types (false positives and negatives), compare with false positives/negatives in medicine. Maybe some image features provoke errors of a certain type. Model error propagation and (importantly) characterize different error types across models. Check how other health tools treat the asymmetry between type I error and type II error. Idea: visualize attention layer, then cross-check with expert (e.g. cardiologist) whether highlighted features are indeed indicative of an MI / a normal ECG. Important: Create ROC curve. Make different types of errors intuitively understandable for users on the website. Compare image (CNN)-based and time series-based ECG classification
 - From Cyber-sec: Make easy-to-understand problem formulation. Why this problem, and what insights are obtained.
 - From Weather-Traffic: Check how bias/variance can affect the model's prediction
-
-## Some to-dos we discussed during 02 May lecture
- - Generate data with less leads (other format is common ECG prints), maybe after most stuff is done, it reqs. changing just some lines of code
- - Write a disclaimer about the use of the webtool app
- - Write down instructions and general text for the webapp
- - 
