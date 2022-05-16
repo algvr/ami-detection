@@ -85,8 +85,9 @@ def log_checkpoints():
             print('\nLogging checkpoints to MLFlow...')
             mlflow.log_artifacts(CHECKPOINTS_DIR, 'checkpoints/')
             print('Logging checkpoints successful')
-            shutil.rmtree(CHECKPOINTS_DIR)  # Remove the directory and its contents
-            os.makedirs(CHECKPOINTS_DIR)  # Recreate an empty directory
+            #shutil.rmtree(CHECKPOINTS_DIR)  # Remove the directory and its contents
+            #os.makedirs(CHECKPOINTS_DIR)  # Recreate an empty directory
+            os.makedirs(CHECKPOINTS_DIR, exist_ok=True)
     else:
         print('Cannot log checkpoint to MLFlow, as logging is disabled')
 

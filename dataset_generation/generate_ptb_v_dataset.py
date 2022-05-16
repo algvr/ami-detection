@@ -1,11 +1,16 @@
+import os
+import sys
+
+current_dir = os.path.dirname(os.path.realpath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.append(parent_dir)
+
 import datetime
 from data_augmentation import *
-from IPython.core.display_functions import display
 import json
 import math
 import numpy as np
 from PIL import Image
-import os
 from tqdm import tqdm
 
 
@@ -17,6 +22,8 @@ save_dir = os.path.join(root_dir, 'training')
 for dir_path in [root_dir, config_dir, save_dir]:
     os.makedirs(dir_path, exist_ok=True)
 
+
+# specify number of samples to generate here
 
 sample_idx_start = 0
 num_samples_to_generate = 2000

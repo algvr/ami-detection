@@ -106,8 +106,8 @@ def get_ecg_image(layout_array,
     curve_y_scale = (1.0 / millivolts_per_small_cell) * small_cell_size
     calib_rect_width = calib_rect_small_cell_count * small_cell_size
 
-    font = ImageFont.truetype('fonts/courier_prime_bold.ttf', size=lead_label_font_size)
-    metadata_font = ImageFont.truetype('fonts/courier_prime_bold.ttf', size=metadata_font_size)
+    font = ImageFont.truetype('dataset_generation/fonts/courier_prime_bold.ttf', size=lead_label_font_size)
+    metadata_font = ImageFont.truetype('dataset_generation/fonts/courier_prime_bold.ttf', size=metadata_font_size)
 
     num_hor_small_cells = math.ceil(max_timesteps_per_row / timesteps_per_small_cell) + cols * calib_rect_small_cell_count
     num_ver_small_cells = rows * vertical_small_cells_per_lead
