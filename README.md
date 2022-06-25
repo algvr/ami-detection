@@ -1,6 +1,9 @@
 # Analysis of Electrocardiograms via Artificial Neural Networks For a Reliable Assessment of a Possible Myocardial Infarction
 
-This is the official repository for our [DSTSES 2022 project](https://coss.ethz.ch/education/DSTSES.html), containing the code for the generation of the PTB-V dataset and the derivative segmentation map dataset, as well as the definition and training of the segmentation and classification networks.
+This is the official repository for our [DSTSES 2022 project](https://algvrithm.com/ami-detector/info), containing the code for the generation of the PTB-V dataset and the derivative segmentation map dataset, as well as the definition and training of the segmentation and classification networks.
+
+Please see the [project report](https://algvrithm.com/ami-detector-info) for a more elaborate description of this project. A [web tool](https://algvrithm.com:8080) is also available for demonstration purposes.
+
 Below, we describe the steps to reproduce our results and work with our framework.
 
 ## Setup
@@ -19,7 +22,7 @@ Below, we describe the steps to reproduce our results and work with our framewor
 - Open `dataset_generation/data_augmentation.ipynb`, run the cell setting `save_dir`, then run the last cell to generate individual lead images from the PTB-V dataset.
 - Run `segmentation/train_segmentation_model.sh` to train a U-Net segmentation model on the resulting individual lead image dataset using the same configuration we used. See the docstrings of the files within the `segmentation/` directory if you wish to train a custom segmentation model. Checkpoints will be created periodically in the `checkpoints` directory.
 
-## Generating the Segmentation Image Dataset for Training the Classification Model
+## Generating the Segmentation Image Dataset to Train the Classification Model
 
 - Inspect `dataset_generation/generate_dataset_for_classification.py` to change any configuration you may wish to change, then run this script. This will generate a dataset of channel-separated ECG segmentation images using the specified segmentation model and the generated PTB-V dataset.
 - Note that due to the probabilistic nature of our dataset generation process and the difficulty of finding perfect parameters for the data augmentation distributions used by this process, some generated PTB-V samples may possess extreme artifacts such as strong noise or shadows, which may prevent the segmentation network from correctly segmenting them. Such samples are unlikely to be submitted to the classification algorithm by real users. It is worth inspecting the generated channel-separated ECG segmentation images and removing any that appear distorted to ensure the soon-to-be-trained classification model receives an informative training set.
